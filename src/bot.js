@@ -17,7 +17,28 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', userSchema);
 
-const sendWelcomeMessage = async (chatId) => {
+const getMainMenuKeyboard = () => {
+  return {
+    keyboard: [
+      [{ text: '/start' }]
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: true
+  };
+};
+
+const getSubscriptionKeyboard = (userCategories) => {
+  return categories.map(category => {
+    const subscribed = userCategories.includes(category);
+    return [{
+      text: subscribed ? `Unsubscribe from ${category}` : `Subscribe to ${category}`,
+      callback_data: `${subscribed ? 'unsubscribe' : 'subscribe'}_${category}`
+    }];
+  });
+};
+
+bot.onText(/\/start/, async (msg) => {
+  const chatId = msg.chat.id;
   const user = await User.findOne({ chatId });
 
   if (!user) {
@@ -29,20 +50,6 @@ const sendWelcomeMessage = async (chatId) => {
       inline_keyboard: getSubscriptionKeyboard(user?.categories || [])
     }
   });
-};
-
-bot.on('message', async (msg) => {
-  if (msg.new_chat_members) {
-    const chatId = msg.chat.id;
-    sendWelcomeMessage(chatId);
-  }
-});
-
-bot.on('my_chat_member', async (msg) => {
-  const chatId = msg.chat.id;
-  if (msg.new_chat_member.status === 'member') {
-    sendWelcomeMessage(chatId);
-  }
 });
 
 bot.on('callback_query', async (query) => {
@@ -114,16 +121,22 @@ const sendNews = async () => {
   }
 };
 
-const getSubscriptionKeyboard = (userCategories) => {
-  return categories.map(category => {
-    const subscribed = userCategories.includes(category);
-    return [{
-      text: subscribed ? `Unsubscribe from ${category}` : `Subscribe to ${category}`,
-      callback_data: `${subscribed ? 'unsubscribe' : 'subscribe'}_${category}`
-    }];
-  });
-};
-
 setInterval(sendNews, 3600000);
+
+// Initial message when the bot is added or the user starts the bot
+bot.on('message', (msg) => {
+  const chatId = msg.chat.id;
+  if (msg.text === '/start') {
+    bot.sendMessage(chatId, 'Welcome! Please choose a category to subscribe or unsubscribe:', {
+      reply_markup: {
+        inline_keyboard: getSubscriptionKeyboard([])
+      }
+    });
+  } else if (msg.text === '/menu') {
+    bot.sendMessage(chatId, 'Main Menu:', {
+      reply_markup: getMainMenuKeyboard()
+    });
+  }
+});
 
 module.exports = bot;

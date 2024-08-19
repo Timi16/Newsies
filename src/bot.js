@@ -10,23 +10,30 @@ const categories = ['technology', 'sports', 'politics'];
 
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 'Welcome! Please subscribe to a category using the buttons below.', {
+  bot.sendMessage(chatId, 'Welcome! Please choose a category to subscribe:', {
     reply_markup: {
-      keyboard: categories.map(category => [{ text: `/subscribe ${category}` }]),
-      one_time_keyboard: true
-    }
+      inline_keyboard: [
+        [{ text: 'Technology', callback_data: 'subscribe_technology' }],
+        [{ text: 'Sports', callback_data: 'subscribe_sports' }],
+        [{ text: 'Politics', callback_data: 'subscribe_politics' }],
+      ],
+    },
   });
 });
 
-bot.onText(/\/subscribe (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const category = match[1].toLowerCase();
+bot.on('callback_query', async (query) => {
+  const chatId = query.message.chat.id;
+  const action = query.data;
+  const [command, category] = action.split('_');
 
-  if (!categories.includes(category)) {
-    bot.sendMessage(chatId, 'Invalid category. Please choose from technology, sports, or politics.');
-    return;
+  if (command === 'subscribe') {
+    await handleSubscription(chatId, category);
+  } else if (command === 'unsubscribe') {
+    await handleUnsubscription(chatId, category);
   }
+});
 
+const handleSubscription = async (chatId, category) => {
   const user = await User.findOne({ chatId });
 
   if (!user) {
@@ -42,17 +49,10 @@ bot.onText(/\/subscribe (.+)/, async (msg, match) => {
   }
 
   // Fetch and send the latest news for the subscribed category
-  const response = await newsapi.v2.topHeadlines({ category });
-  const articles = response.articles;
-  articles.forEach((article) => {
-    bot.sendMessage(chatId, `${article.title}\n${article.url}`);
-  });
-});
+  await sendNewsForCategory(chatId, category);
+};
 
-bot.onText(/\/unsubscribe (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const category = match[1].toLowerCase();
-
+const handleUnsubscription = async (chatId, category) => {
   const user = await User.findOne({ chatId });
 
   if (user && user.categories.includes(category)) {
@@ -62,17 +62,29 @@ bot.onText(/\/unsubscribe (.+)/, async (msg, match) => {
   } else {
     bot.sendMessage(chatId, `You are not subscribed to ${category} news.`);
   }
-});
+};
+
+const sendNewsForCategory = async (chatId, category) => {
+  const response = await newsapi.v2.topHeadlines({
+    category,
+    language: 'en',
+  });
+
+  const articles = response.articles;
+  if (articles.length > 0) {
+    articles.forEach((article) => {
+      bot.sendMessage(chatId, `${article.title}\n${article.url}`);
+    });
+  } else {
+    bot.sendMessage(chatId, `No news articles found for ${category}.`);
+  }
+};
 
 const sendNews = async () => {
   const users = await User.find();
   for (const user of users) {
     for (const category of user.categories) {
-      const response = await newsapi.v2.topHeadlines({ category });
-      const articles = response.articles;
-      articles.forEach((article) => {
-        bot.sendMessage(user.chatId, `${article.title}\n${article.url}`);
-      });
+      await sendNewsForCategory(user.chatId, category);
     }
   }
 };

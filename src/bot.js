@@ -20,7 +20,8 @@ const User = mongoose.model('User', userSchema);
 const getMainMenuKeyboard = () => {
   return {
     keyboard: [
-      [{ text: '/start' }]
+      [{ text: '/start' }],
+      [{ text: 'News Feed' }]
     ],
     resize_keyboard: true,
     one_time_keyboard: true
@@ -121,11 +122,9 @@ const sendNews = async () => {
   }
 };
 
-setInterval(sendNews, 3600000);
-
-// Initial message when the bot is added or the user starts the bot
-bot.on('message', (msg) => {
+bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
+
   if (msg.text === '/start') {
     bot.sendMessage(chatId, 'Welcome! Please choose a category to subscribe or unsubscribe:', {
       reply_markup: {
@@ -136,7 +135,11 @@ bot.on('message', (msg) => {
     bot.sendMessage(chatId, 'Main Menu:', {
       reply_markup: getMainMenuKeyboard()
     });
+  } else if (msg.text === 'News Feed') {
+    await sendNews(chatId); // Fetches and sends the latest news from subscribed categories
   }
 });
+
+setInterval(sendNews, 3600000); // Sends news updates every hour to all users
 
 module.exports = bot;

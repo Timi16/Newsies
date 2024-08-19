@@ -1,5 +1,5 @@
-const connectDB = require('./src/database');
-const bot = require('./src/bot');
+const connectDB = require('./database');
+const bot = require('./bot');
 const express = require('express');
 require('dotenv').config();
 

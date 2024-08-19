@@ -40,6 +40,13 @@ bot.onText(/\/subscribe (.+)/, async (msg, match) => {
   } else {
     bot.sendMessage(chatId, `You are already subscribed to ${category} news.`);
   }
+
+  // Fetch and send the latest news for the subscribed category
+  const response = await newsapi.v2.topHeadlines({ category });
+  const articles = response.articles;
+  articles.forEach((article) => {
+    bot.sendMessage(chatId, `${article.title}\n${article.url}`);
+  });
 });
 
 bot.onText(/\/unsubscribe (.+)/, async (msg, match) => {

@@ -6,14 +6,26 @@ require('dotenv').config();
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 const newsapi = new NewsAPI(process.env.NEWS_API_KEY);
 
+const categories = ['technology', 'sports', 'politics'];
+
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 'Welcome! Please subscribe to a category using /subscribe [category]. Available categories: technology, sports, politics.');
+  bot.sendMessage(chatId, 'Welcome! Please subscribe to a category using the buttons below.', {
+    reply_markup: {
+      keyboard: categories.map(category => [{ text: `/subscribe ${category}` }]),
+      one_time_keyboard: true
+    }
+  });
 });
 
 bot.onText(/\/subscribe (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const category = match[1].toLowerCase();
+
+  if (!categories.includes(category)) {
+    bot.sendMessage(chatId, 'Invalid category. Please choose from technology, sports, or politics.');
+    return;
+  }
 
   const user = await User.findOne({ chatId });
 

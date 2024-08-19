@@ -8,7 +8,7 @@ const newsapi = new NewsAPI(process.env.NEWS_API_KEY);
 
 const categories = ['technology', 'sports', 'politics'];
 
-mongoose.connect(process.env.MONGO_URI);
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
 // Define User schema and model
 const userSchema = new mongoose.Schema({
@@ -17,8 +17,7 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', userSchema);
 
-bot.onText(/\/start/, async (msg) => {
-  const chatId = msg.chat.id;
+const sendWelcomeMessage = async (chatId) => {
   const user = await User.findOne({ chatId });
 
   if (!user) {
@@ -30,6 +29,20 @@ bot.onText(/\/start/, async (msg) => {
       inline_keyboard: getSubscriptionKeyboard(user?.categories || [])
     }
   });
+};
+
+bot.on('message', async (msg) => {
+  if (msg.new_chat_members) {
+    const chatId = msg.chat.id;
+    sendWelcomeMessage(chatId);
+  }
+});
+
+bot.on('my_chat_member', async (msg) => {
+  const chatId = msg.chat.id;
+  if (msg.new_chat_member.status === 'member') {
+    sendWelcomeMessage(chatId);
+  }
 });
 
 bot.on('callback_query', async (query) => {

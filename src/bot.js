@@ -20,8 +20,7 @@ const User = mongoose.model('User', userSchema);
 const getMainMenuKeyboard = () => {
   return {
     keyboard: [
-      [{ text: '/start' }],
-      [{ text: 'News Feed' }]
+      [{ text: 'News Update' }, { text: 'Manage Subscriptions' }]
     ],
     resize_keyboard: true,
     one_time_keyboard: true
@@ -46,10 +45,8 @@ bot.onText(/\/start/, async (msg) => {
     await new User({ chatId }).save();
   }
 
-  bot.sendMessage(chatId, 'Welcome! Please choose a category to subscribe or unsubscribe:', {
-    reply_markup: {
-      inline_keyboard: getSubscriptionKeyboard(user?.categories || [])
-    }
+  bot.sendMessage(chatId, 'Welcome! Use the buttons below to manage your subscriptions or get news updates:', {
+    reply_markup: getMainMenuKeyboard()
   });
 });
 
@@ -113,33 +110,44 @@ const sendNewsForCategory = async (chatId, category) => {
   }
 };
 
-const sendNews = async () => {
-  const users = await User.find();
-  for (const user of users) {
-    for (const category of user.categories) {
-      await sendNewsForCategory(user.chatId, category);
-    }
+const sendNews = async (chatId) => {
+  const user = await User.findOne({ chatId });
+  if (!user || user.categories.length === 0) {
+    bot.sendMessage(chatId, 'You are not subscribed to any categories. Please subscribe to categories first.');
+    return;
+  }
+
+  for (const category of user.categories) {
+    await sendNewsForCategory(chatId, category);
   }
 };
 
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
 
-  if (msg.text === '/start') {
-    bot.sendMessage(chatId, 'Welcome! Please choose a category to subscribe or unsubscribe:', {
+  if (msg.text === 'Manage Subscriptions') {
+    const user = await User.findOne({ chatId });
+    bot.sendMessage(chatId, 'Please choose a category to subscribe or unsubscribe:', {
       reply_markup: {
-        inline_keyboard: getSubscriptionKeyboard([])
+        inline_keyboard: getSubscriptionKeyboard(user?.categories || [])
       }
     });
+  } else if (msg.text === 'News Update') {
+    await sendNews(chatId); // Fetches and sends the latest news based on the user's subscriptions
   } else if (msg.text === '/menu') {
     bot.sendMessage(chatId, 'Main Menu:', {
       reply_markup: getMainMenuKeyboard()
     });
-  } else if (msg.text === 'News Feed') {
-    await sendNews(chatId); // Fetches and sends the latest news from subscribed categories
   }
 });
 
-setInterval(sendNews, 3600000); // Sends news updates every hour to all users
+setInterval(async () => {
+  const users = await User.find();
+  for (const user of users) {
+    for (const category of user.categories) {
+      await sendNewsForCategory(user.chatId, category);
+    }
+  }
+}, 3600000); // Sends news updates every hour to all users
 
 module.exports = bot;

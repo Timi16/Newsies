@@ -8,7 +8,7 @@ const newsapi = new NewsAPI(process.env.NEWS_API_KEY);
 
 const categories = ['technology', 'sports', 'politics'];
 
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(process.env.MONGO_URI);
 
 // Define User schema and model
 const userSchema = new mongoose.Schema({
